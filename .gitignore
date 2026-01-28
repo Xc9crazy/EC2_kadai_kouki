@@ -1,0 +1,30 @@
+# Environment variables
+.env
+
+# Docker volumes
+/mysql/
+/redis/
+
+# Uploaded files (keep directory but ignore contents)
+/public/upload/image/*
+!/public/upload/image/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Backup files
+*.bak
+*.backup
+*.sql.gz

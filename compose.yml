@@ -1,0 +1,93 @@
+services:
+  web:
+    image: nginx:latest
+    container_name: web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./public/:/var/www/public/
+      - image:/var/www/upload/image/
+    depends_on:
+      - php
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  php:
+    container_name: php
+    build:
+      context: .
+      target: php
+    volumes:
+      - ./public/:/var/www/public/
+      - image:/var/www/upload/image/
+    environment:
+      DB_HOST: mysql
+      DB_NAME: ${DB_NAME:-example_db}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SESSION_SECURE: ${SESSION_SECURE:-false}
+      APP_ENV: ${APP_ENV:-development}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  mysql:
+    container_name: mysql
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-example_db}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-}
+      MYSQL_ALLOW_EMPTY_PASSWORD: ${ALLOW_EMPTY_PASSWORD:-1}
+      TZ: Asia/Tokyo
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    command: >
+      mysqld
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_allowed_packet=16MB
+      --innodb_buffer_pool_size=256M
+      --innodb_log_file_size=64M
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql:
+  redis:
+  image:
+
+networks:
+  app-network:
+    driver: bridge
